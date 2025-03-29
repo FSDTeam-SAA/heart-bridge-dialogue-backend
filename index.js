@@ -38,6 +38,9 @@ const paymentSchema = new mongoose.Schema({
 })
 
 const Payment = mongoose.model('Payment', paymentSchema)
+app.get('/', (req, res) => {
+  res.send('<h1>Server is running</h1>')
+})
 
 // Payment route
 app.post('/api/payment', async (req, res) => {
@@ -88,6 +91,8 @@ app.post('/api/payment', async (req, res) => {
     })
   }
 })
+
+
 
 // Start server
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
