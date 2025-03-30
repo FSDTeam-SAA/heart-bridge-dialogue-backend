@@ -92,6 +92,43 @@ app.post('/api/payment', async (req, res) => {
   }
 })
 
+app.get('/api/payment-status/:userId', async (req, res) => {
+  const { userId } = req.params
+
+  try {
+    // Find the payment record
+    const payment = await Payment.findOne({ userId })
+    if (!payment) {
+      return res.status(404).json({ message: 'Payment record not found' })
+    }
+
+    // Fetch the latest session status from Stripe
+    const session = await stripe.checkout.sessions.retrieve(
+      payment.stripeSessionId
+    )
+
+    // Update payment status in the database if changed
+    if (payment.paymentStatus !== session.payment_status) {
+      payment.paymentStatus = session.payment_status
+      await payment.save()
+    }
+
+    res.status(200).json({
+      userId: payment.userId,
+      eventId: payment.eventId,
+      amount: payment.amount,
+      stripeSessionId: payment.stripeSessionId,
+      paymentStatus: payment.paymentStatus,
+    })
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error retrieving payment status',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+})
+
+
 
 
 // Start server
