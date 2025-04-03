@@ -34,10 +34,14 @@ const paymentSchema = new mongoose.Schema({
   eventId: String,
   amount: Number,
   stripeSessionId: String,
-  planStatus: { type:String,enum:['activate', 'finished'], default: 'activate' },
+  planStatus: {
+    type: String,
+    enum: ['activate', 'finished'],
+    default: 'activate',
+  },
   paymentStatus: { type: String, default: 'pending' },
-  messageLimit: { type: Number }, 
-  messagesSent: { type: Number, default: 0 }, 
+  messageLimit: { type: Number },
+  messagesSent: { type: Number, default: 0 },
   freePlan: { type: Boolean, default: true },
 })
 
@@ -98,8 +102,8 @@ app.post('/api/payment', async (req, res) => {
       amount,
       stripeSessionId: session.id,
       paymentStatus: 'pending',
-      messageLimit, 
-      freePlan, 
+      messageLimit,
+      freePlan,
     })
 
     await newPayment.save()
@@ -128,7 +132,12 @@ app.post('/api/send-message', async (req, res) => {
     )
 
     if (!payments.length) {
-      return res.status(404).json({ message: 'No active payment record found' })
+      return res
+        .status(404)
+        .json({
+          status: 'limit_reached',
+          message: 'No active payment record found',
+        })
     }
 
     // Use the most recent active plan, or the first in the sorted array
@@ -158,6 +167,7 @@ app.post('/api/send-message', async (req, res) => {
     })
   } catch (error) {
     res.status(500).json({
+      status: 'limit_reached',
       message: 'Error sending message',
       error: error instanceof Error ? error.message : 'Unknown error',
     })
@@ -248,7 +258,7 @@ app.get('/check-plan', async (req, res) => {
     if (!payment) {
       return res
         .status(404)
-        .json({ success:false,error: 'No active plan found for this user' })
+        .json({ success: false, error: 'No active plan found for this user' })
     }
 
     // Check if message limit is exceeded
@@ -257,7 +267,7 @@ app.get('/check-plan', async (req, res) => {
       await payment.save()
 
       return res.status(200).json({
-        success:false,
+        success: false,
         message: 'Message limit exceeded, plan status changed to finished',
         planStatus: payment.planStatus,
       })
@@ -265,7 +275,7 @@ app.get('/check-plan', async (req, res) => {
 
     // If the message limit is not exceeded, return the current status
     return res.status(200).json({
-      success:true,
+      success: true,
       message: 'User has an active plan and message limit is not exceeded',
       planStatus: payment.planStatus,
       messagesSent: payment.messagesSent,
