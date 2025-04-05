@@ -7,6 +7,7 @@ require('dotenv').config()
 
 const dbConnection = require('./config/dbConfig')
 const paymentRoutes = require('./routes/paymentRoute')
+const aiResponseRoutes = require('./routes/airesponseRouter')
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -17,6 +18,7 @@ app.use(bodyParser.json())
 dbConnection()
 
 app.use('/', paymentRoutes)
+app.use('/api', aiResponseRoutes)
 app.get('/', (req, res) => {
   res.send('<h1>Server is running</h1>')
 })
