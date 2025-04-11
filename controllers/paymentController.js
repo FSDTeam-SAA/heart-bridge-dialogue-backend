@@ -53,8 +53,8 @@ const paymentController= async (req, res) => {
       )
 
       // Mark the free plan as finished
-      existingFreePlan.planStatus = 'finished'
-      existingFreePlan.freePlan = false
+      // existingFreePlan.planStatus = 'finished'
+      // existingFreePlan.freePlan = false
       await existingFreePlan.save()
     }
 
@@ -86,6 +86,64 @@ const paymentController= async (req, res) => {
 }
 
 // Check message limit route
+// const checkMessageLimit = async (req, res) => {
+//   const { email, message } = req.body
+
+//   if (!email || !message) {
+//     return res.status(400).json({ message: 'Email and message are required' })
+//   }
+
+//   try {
+//     // Find all active payments for the user, sorted by the latest first
+//     const payments = await Payment.find({
+//       email,
+//       planStatus: { $in: ['activate', 'free_plan'] },
+//     }).sort({ createdAt: -1 })
+
+
+//     if (!payments.length) {
+//       return res
+//         .status(404)
+//         .json({
+//           status: 'limit_reached',
+//           message: 'No active payment record found',
+//         })
+//     }
+
+//     // Use the most recent active plan, or the first in the sorted array
+//     let payment = payments[0]
+
+//     // Check if the user has exceeded their message limit
+//     if (payment.messagesSent >= payment.messageLimit) {
+//       payment.planStatus = 'finished'
+//       await payment.save()
+
+//       return res.status(403).json({
+//         status: 'limit_reached',
+//         message: `You have reached your message limit of ${payment.messageLimit} messages. Your plan has been updated to finished.`,
+//       })
+//     }
+
+//     // Simulate sending the message
+//     payment.messagesSent += 1
+
+//     // Save the updated payment record
+//     await payment.save()
+
+//     res.status(200).json({
+//       message: 'Message sent successfully',
+//       messagesSent: payment.messagesSent,
+//       remainingMessages: payment.messageLimit - payment.messagesSent,
+//     })
+//   } catch (error) {
+//     res.status(500).json({
+//       status: 'limit_reached',
+//       message: 'Error sending message',
+//       error: error instanceof Error ? error.message : 'Unknown error',
+//     })
+//   }
+// }
+// Check message limit route
 const checkMessageLimit = async (req, res) => {
   const { email, message } = req.body
 
@@ -100,7 +158,6 @@ const checkMessageLimit = async (req, res) => {
       planStatus: { $in: ['activate', 'free_plan'] },
     }).sort({ createdAt: -1 })
 
-
     if (!payments.length) {
       return res
         .status(404)
@@ -108,6 +165,23 @@ const checkMessageLimit = async (req, res) => {
           status: 'limit_reached',
           message: 'No active payment record found',
         })
+    }
+
+    // Check if there are both activate and free_plan statuses
+    const hasActivate = payments.some(p => p.planStatus === 'activate')
+    const hasFreePlan = payments.some(p => p.planStatus === 'free_plan')
+    
+    if (hasActivate && hasFreePlan) {
+      // Update all free_plan records to finished
+      await Payment.updateMany(
+        { email, planStatus: 'free_plan' },
+        { $set: { planStatus: 'finished' } }
+      )
+      // Refresh payments list after update
+      payments = await Payment.find({
+        email,
+        planStatus: 'activate',
+      }).sort({ createdAt: -1 })
     }
 
     // Use the most recent active plan, or the first in the sorted array
